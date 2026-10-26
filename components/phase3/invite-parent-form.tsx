@@ -7,10 +7,11 @@ import { FormError, FormSuccess } from '@/components/auth/form-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatLearnerGrade } from '@/lib/school/grade-display';
 
 const initial: ActionState = {};
 
-type LearnerOption = { id: string; first_name: string; last_name: string; admission_ref: string };
+type LearnerOption = { id: string; first_name: string; last_name: string; grade: string };
 
 export function InviteParentForm({ learners }: { learners: LearnerOption[] }) {
   const [state, action, pending] = useActionState(inviteParentAction, initial);
@@ -33,7 +34,8 @@ export function InviteParentForm({ learners }: { learners: LearnerOption[] }) {
         >
           {learners.map((l) => (
             <option key={l.id} value={l.id}>
-              {l.first_name} {l.last_name} ({l.admission_ref})
+              {[l.first_name, l.last_name].filter(Boolean).join(' ')}
+              {l.grade ? ` · ${formatLearnerGrade(l.grade)}` : ''}
             </option>
           ))}
         </select>

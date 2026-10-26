@@ -42,17 +42,18 @@ export function CreateLearnerForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="admissionRef">Admission / student number (optional)</Label>
-        <Input id="admissionRef" name="admissionRef" placeholder="2025-001" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="guardianEmail">Parent / caregiver email (optional)</Label>
+        <Label htmlFor="guardianEmail">Parent / caregiver email</Label>
         <Input
           id="guardianEmail"
           name="guardianEmail"
           type="email"
-          placeholder="Creates an invite link when provided"
+          required
+          autoComplete="email"
+          placeholder="parent@example.com"
         />
+        <p className="text-xs text-muted-foreground">
+          We create an invite link for this email after the learner is saved.
+        </p>
       </div>
       <Button type="submit" disabled={pending}>{pending ? 'Saving…' : 'Add learner'}</Button>
     </form>

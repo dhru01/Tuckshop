@@ -34,7 +34,7 @@ export default async function Page() {
   const { data: cards } = schoolId
     ? await supabase
         .from('nfc_cards')
-        .select('id, card_status, credential_reference, learner_id, learners ( first_name, last_name )')
+        .select('id, card_status, learner_id, learners ( first_name, last_name )')
         .eq('school_id', schoolId)
     : { data: [] };
 
@@ -43,6 +43,7 @@ export default async function Page() {
       <PageHeader
         title="NFC cards"
         description="Register cards, manage lost/stolen/freeze, and replace pilot UID cards. Secure SDM verification is required before production."
+        descriptionClassName="max-w-none whitespace-nowrap"
       />
       {!settings?.allow_uid_only_cards ? (
         <form action={enablePilotNfcFormAction}>
@@ -65,9 +66,7 @@ export default async function Page() {
                 key={c.id}
                 cardId={c.id}
                 status={c.card_status}
-                credentialReference={c.credential_reference}
                 learnerName={`${learner?.first_name ?? ''} ${learner?.last_name ?? ''}`.trim()}
-                allowUidPilot={Boolean(settings?.allow_uid_only_cards)}
               />
             );
           })

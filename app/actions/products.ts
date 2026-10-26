@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { parseProductCsv } from '@/lib/products/csv';
+import { isProductUploadFile, parseProductUpload } from '@/lib/products/parse-upload';
+import { revalidateSchoolCatalog } from '@/lib/school/revalidate-catalog';
 import { parseRandToCents } from '@/lib/wallets/money';
 import {
   ensureSchoolProductCategories,
@@ -47,22 +48,8 @@ export async function createProductAction(
   const description = String(formData.get('description') ?? '').trim();
   const barcode = String(formData.get('barcode') ?? '').trim();
   const priceCents = parseRandToCents(String(formData.get('price') ?? ''));
-  const costRaw = String(formData.get('cost') ?? '').trim();
-  const costPriceCents = costRaw ? parseRandToCents(costRaw) : null;
-  const trackStock = formData.get('trackStock') === 'on';
-  const initialStock = Number.parseInt(String(formData.get('initialStock') ?? '0'), 10);
-  const lowRaw = String(formData.get('lowStockThreshold') ?? '').trim();
-  const lowStockThreshold = lowRaw ? Number.parseInt(lowRaw, 10) : null;
-
   if (!name) return { error: 'Product name is required.' };
   if (priceCents === null || priceCents < 0) return { error: 'Enter a valid price.' };
-  if (costRaw && costPriceCents === null) return { error: 'Enter a valid cost price.' };
-  if (trackStock && (!Number.isSafeInteger(initialStock) || initialStock < 0)) {
-    return { error: 'Initial stock must be zero or more.' };
-  }
-  if (lowRaw && (!Number.isSafeInteger(lowStockThreshold) || lowStockThreshold! < 0)) {
-    return { error: 'Low-stock threshold must be zero or more.' };
-  }
 
   const { error } = await schoolCreateProduct(ctx.actor, {
     schoolId: ctx.schoolId,
@@ -71,10 +58,10 @@ export async function createProductAction(
     description: description || null,
     barcode: barcode || null,
     priceCents,
-    costPriceCents,
-    trackStock,
-    initialStock: trackStock ? initialStock : 0,
-    lowStockThreshold,
+    costPriceCents: null,
+    trackStock: false,
+    initialStock: 0,
+    lowStockThreshold: null,
   });
 
   if (error) {
@@ -84,9 +71,8 @@ export async function createProductAction(
     return { error: 'Could not create product.' };
   }
 
-  revalidatePath('/school/products');
-  revalidatePath('/school/inventory');
-  return { success: `Added ${name}.` };
+  revalidateSchoolCatalog();
+  return { success: `Added ${name}. It will appear on the POS.` };
 }
 
 export async function updateProductAction(
@@ -107,19 +93,10 @@ export async function updateProductAction(
   const description = String(formData.get('description') ?? '').trim();
   const barcode = String(formData.get('barcode') ?? '').trim();
   const priceCents = parseRandToCents(String(formData.get('price') ?? ''));
-  const costRaw = String(formData.get('cost') ?? '').trim();
-  const costPriceCents = costRaw ? parseRandToCents(costRaw) : null;
-  const trackStock = formData.get('trackStock') === 'on';
-  const lowRaw = String(formData.get('lowStockThreshold') ?? '').trim();
-  const lowStockThreshold = lowRaw ? Number.parseInt(lowRaw, 10) : null;
   const isActive = formData.get('isActive') === 'on';
 
   if (!name) return { error: 'Product name is required.' };
   if (priceCents === null || priceCents < 0) return { error: 'Enter a valid price.' };
-  if (costRaw && costPriceCents === null) return { error: 'Enter a valid cost price.' };
-  if (lowRaw && (!Number.isSafeInteger(lowStockThreshold) || lowStockThreshold! < 0)) {
-    return { error: 'Low-stock threshold must be zero or more.' };
-  }
 
   let imagePath: string | null | undefined = undefined;
   const imageFile = formData.get('image');
@@ -136,9 +113,9 @@ export async function updateProductAction(
     description: description || null,
     barcode: barcode || null,
     priceCents,
-    costPriceCents,
-    trackStock,
-    lowStockThreshold,
+    costPriceCents: null,
+    trackStock: false,
+    lowStockThreshold: null,
     isActive,
     imagePath: imagePath ?? null,
   });
@@ -150,9 +127,8 @@ export async function updateProductAction(
     return { error: 'Could not update product.' };
   }
 
-  revalidatePath('/school/products');
-  revalidatePath('/school/inventory');
-  return { success: `Saved ${name}.` };
+  revalidateSchoolCatalog();
+  return { success: `Saved ${name}. POS catalogue updated.` };
 }
 
 export async function archiveProductAction(productId: string): Promise<ProductActionState> {
@@ -160,11 +136,10 @@ export async function archiveProductAction(productId: string): Promise<ProductAc
   if ('error' in ctx) return { error: ctx.error };
 
   const { error } = await schoolArchiveProduct(ctx.actor, productId);
-  if (error) return { error: 'Could not archive product.' };
+  if (error) return { error: 'Could not delete product.' };
 
-  revalidatePath('/school/products');
-  revalidatePath('/school/inventory');
-  return { success: 'Product archived.' };
+  revalidateSchoolCatalog();
+  return { success: 'Product deleted.' };
 }
 
 export async function adjustStockAction(
@@ -235,12 +210,14 @@ export async function importProductsAction(
 
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
-    return { error: 'Choose a CSV file to import.' };
+    return { error: 'Choose an Excel file to import.' };
+  }
+  if (!isProductUploadFile(file.name)) {
+    return { error: 'Upload an Excel file (.xlsx).' };
   }
 
-  const text = await file.text();
   const categories = await loadCategories(ctx.actor, ctx.schoolId);
-  const { rows, errors } = parseProductCsv(text, categories);
+  const { rows, errors } = await parseProductUpload(file, categories);
   if (errors.length > 0) {
     return { error: errors.slice(0, 5).join(' ') };
   }
@@ -259,17 +236,16 @@ export async function importProductsAction(
       description: null,
       barcode: row.barcode,
       priceCents: row.priceCents,
-      costPriceCents: row.costPriceCents,
-      trackStock: row.trackStock,
-      initialStock: row.initialStock,
-      lowStockThreshold: row.lowStockThreshold,
+      costPriceCents: null,
+      trackStock: false,
+      initialStock: 0,
+      lowStockThreshold: null,
     });
     if (!error) created += 1;
   }
 
-  revalidatePath('/school/products');
-  revalidatePath('/school/inventory');
-  return { success: `Imported ${created} of ${rows.length} product(s).` };
+  revalidateSchoolCatalog();
+  return { success: `Imported ${created} of ${rows.length} product(s). POS catalogue updated.` };
 }
 
 export async function ensureCategoriesForSchool(schoolId: string, actor: string) {

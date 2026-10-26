@@ -19,6 +19,20 @@ describe('parseRosterCsv', () => {
     const lines = parseRosterCsv(csv);
     expect(lines.some((l) => !l.ok)).toBe(true);
   });
+
+  it('imports name and grade without caregiver email', () => {
+    const csv = `name,grade
+Parth Mistry,5`;
+    const lines = parseRosterCsv(csv);
+    const ok = lines.find((l) => l.ok);
+    expect(ok?.ok).toBe(true);
+    if (ok?.ok) {
+      expect(ok.row.firstName).toBe('Parth');
+      expect(ok.row.lastName).toBe('Mistry');
+      expect(ok.row.grade).toBe('5');
+      expect(ok.row.guardianEmail).toBeUndefined();
+    }
+  });
 });
 
 describe('sanitiseCsvCell', () => {

@@ -1,9 +1,5 @@
-import type { Metadata } from 'next';
-
-import { PhasePlaceholder } from '@/components/shared/phase-placeholder';
-
-export const metadata: Metadata = { title: 'Staff' };
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <PhasePlaceholder title="Staff" description="Cashiers and administrators" phase={3} />;
+  redirect('/school/dashboard');
 }

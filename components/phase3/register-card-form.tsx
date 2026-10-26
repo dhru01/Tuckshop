@@ -18,10 +18,6 @@ export function RegisterCardForm({ learners }: { learners: LearnerOption[] }) {
   return (
     <form action={action} className="max-w-md space-y-4 rounded-md border border-border bg-background p-4">
       <h2 className="text-sm font-medium">Register card UID</h2>
-      <p className="text-xs text-muted-foreground">
-        Read the UID with an NFC phone app or reader, then paste it here. Tap-to-pay at the tuck shop
-        comes in Phase 7–8.
-      </p>
       <FormError message={state.error} />
       <FormSuccess message={state.success} />
       <div className="space-y-2">

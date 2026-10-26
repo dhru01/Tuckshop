@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { ensureCategoriesForSchool } from '@/app/actions/products';
 import { CreateProductForm } from '@/components/school/create-product-form';
@@ -7,11 +6,14 @@ import { ImportProductsForm } from '@/components/school/import-products-form';
 import { ProductList } from '@/components/school/product-list';
 import { PageHeader } from '@/components/shared/page-header';
 import { actorId, requireActorForInterface } from '@/lib/auth/require-actor';
+import { CATALOG_PRODUCT_SELECT, isVisibleOnPos } from '@/lib/school/catalog';
 import { publicEnv } from '@/lib/env/public';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { productImagePublicUrl } from '@/services/product-image-service';
 
 export const metadata: Metadata = { title: 'Products' };
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   const access = await requireActorForInterface('school');
@@ -19,15 +21,16 @@ export default async function Page() {
   const actor = actorId(access);
   const env = publicEnv();
 
-  const categories = schoolId ? await ensureCategoriesForSchool(schoolId, actor) : [];
+  const categoriesRaw = schoolId ? await ensureCategoriesForSchool(schoolId, actor) : [];
+  const categories = [...categoriesRaw].sort(
+    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+  );
 
   const supabase = await createSupabaseServerClient();
   const { data: products } = schoolId
     ? await supabase
         .from('products')
-        .select(
-          'id, name, barcode, price_cents, cost_price_cents, track_stock, stock_quantity, low_stock_threshold, is_active, category_id, image_path',
-        )
+        .select(CATALOG_PRODUCT_SELECT)
         .eq('school_id', schoolId)
         .is('archived_at', null)
         .order('name')
@@ -38,10 +41,6 @@ export default async function Page() {
     name: p.name,
     barcode: p.barcode,
     priceCents: p.price_cents,
-    costPriceCents: p.cost_price_cents,
-    trackStock: p.track_stock,
-    stockQuantity: p.stock_quantity,
-    lowStockThreshold: p.low_stock_threshold,
     isActive: p.is_active,
     categoryId: p.category_id,
     imageUrl: productImagePublicUrl(p.image_path, env.NEXT_PUBLIC_SUPABASE_URL),
@@ -51,17 +50,7 @@ export default async function Page() {
     <div className="space-y-8">
       <PageHeader
         title="Products"
-        description="Manage catalogue, pricing, and barcodes for the tuck shop."
-        actions={
-          schoolId ? (
-            <Link
-              href="/school/products/export"
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Export CSV
-            </Link>
-          ) : null
-        }
+        description="Manage the tuck shop catalogue — changes sync to the school POS when products are shown on POS."
       />
       {schoolId ? (
         <div className="grid gap-8 lg:grid-cols-2">
@@ -69,7 +58,11 @@ export default async function Page() {
           <ImportProductsForm />
         </div>
       ) : null}
-      <ProductList products={rows} categories={categories} />
+      <ProductList
+        products={rows}
+        categories={categories}
+        posProductCount={(products ?? []).filter((p) => isVisibleOnPos(p)).length}
+      />
     </div>
   );
 }

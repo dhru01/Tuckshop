@@ -17,7 +17,7 @@ export default async function Page() {
   const { data: learners } = schoolId
     ? await supabase
         .from('learners')
-        .select('id, first_name, last_name, admission_ref')
+        .select('id, first_name, last_name, grade')
         .eq('school_id', schoolId)
         .eq('status', 'active')
     : { data: [] };

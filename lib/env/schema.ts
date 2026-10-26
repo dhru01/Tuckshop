@@ -39,6 +39,8 @@ const serverEnvBase = z.object({
 
   UI_SHELL_PREVIEW: boolFlag,
   SIMULATED_NFC_ENABLED: boolFlag,
+  /** When true, POS shows a password lock after idle time (lib/pos/inactivity.ts). Off by default. */
+  POS_INACTIVITY_LOCK_ENABLED: boolFlag,
 
   PAYFAST_MODE: z.enum(['sandbox', 'live']).default('sandbox'),
   PAYFAST_MERCHANT_ID: optionalString,

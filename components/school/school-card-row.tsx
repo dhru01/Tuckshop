@@ -2,70 +2,93 @@
 
 import { useState, useTransition } from 'react';
 
-import { schoolReplaceCardAction, schoolSetCardStatusAction } from '@/app/actions/cards';
+import { schoolSetCardStatusAction } from '@/app/actions/cards';
 import { FormError, FormSuccess } from '@/components/auth/form-message';
+import { StatusBadge, type StatusTone } from '@/components/shared/status-badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export type SchoolCardRowProps = {
   cardId: string;
   status: string;
-  credentialReference: string;
   learnerName: string;
-  allowUidPilot: boolean;
 };
 
-export function SchoolCardRow({
-  cardId,
-  status,
-  credentialReference,
-  learnerName,
-  allowUidPilot,
-}: SchoolCardRowProps) {
+function cardStatusPresentation(status: string): { label: string; tone: StatusTone; glow?: boolean } {
+  switch (status) {
+    case 'active':
+      return { label: 'Active', tone: 'success', glow: true };
+    case 'frozen':
+      return { label: 'Frozen', tone: 'warning' };
+    case 'lost':
+      return { label: 'Lost', tone: 'danger' };
+    case 'stolen':
+      return { label: 'Stolen', tone: 'danger' };
+    case 'deactivated':
+      return { label: 'Deactivated', tone: 'neutral' };
+    case 'replaced':
+      return { label: 'Replaced', tone: 'neutral' };
+    default:
+      return { label: status, tone: 'neutral' };
+  }
+}
+
+export function SchoolCardRow({ cardId, status, learnerName }: SchoolCardRowProps) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
-  const [replaceOpen, setReplaceOpen] = useState(false);
-  const [newUid, setNewUid] = useState('');
-  const [reason, setReason] = useState('');
+
+  const { label, tone, glow } = cardStatusPresentation(status);
 
   const runStatus = (newStatus: string, defaultReason: string) => {
     setMessage(undefined);
     setError(undefined);
     start(async () => {
-      const result = await schoolSetCardStatusAction(cardId, newStatus, reason.trim() || defaultReason);
+      const result = await schoolSetCardStatusAction(cardId, newStatus, defaultReason);
       if (result.error) setError(result.error);
       else setMessage(result.success);
     });
   };
 
-  const runReplace = () => {
-    setMessage(undefined);
-    setError(undefined);
-    start(async () => {
-      const result = await schoolReplaceCardAction(cardId, newUid, reason.trim() || 'Replacement card');
-      if (result.error) setError(result.error);
-      else {
-        setMessage(result.success);
-        setReplaceOpen(false);
-        setNewUid('');
-      }
-    });
-  };
-
-  const terminal = ['lost', 'stolen', 'deactivated', 'replaced'].includes(status);
+  const terminal = ['deactivated', 'replaced'].includes(status);
+  const restorable = status === 'lost' || status === 'stolen';
 
   return (
     <li className="space-y-3 p-4">
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{learnerName}</span>
-        <span className="text-muted-foreground"> · {status}</span>
-        <span className="block text-xs text-muted-foreground">{credentialReference}</span>
+        <StatusBadge
+          tone={tone}
+          className={cn(
+            glow &&
+              'shadow-[0_0_0_1px_oklch(0.5_0.14_152_/_0.35),0_0_14px_oklch(0.55_0.16_152_/_0.35)] ring-success/40',
+          )}
+        >
+          {label}
+        </StatusBadge>
       </div>
       <FormError message={error} />
       <FormSuccess message={message} />
-      {!terminal ? (
+      {restorable ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={pending}
+            onClick={() => runStatus('active', 'Restored after mistaken report')}
+          >
+            Restore card
+          </Button>
+        </div>
+      ) : null}
+      {!terminal && !restorable ? (
         <div className="flex flex-wrap gap-2">
           {status === 'active' ? (
             <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => runStatus('frozen', 'Admin freeze')}>
@@ -77,33 +100,21 @@ export function SchoolCardRow({
               Unfreeze
             </Button>
           ) : null}
-          <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => runStatus('lost', 'Reported lost')}>
-            Mark lost
-          </Button>
-          <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => runStatus('stolen', 'Reported stolen')}>
-            Mark stolen
-          </Button>
-          {allowUidPilot ? (
-            <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => setReplaceOpen((v) => !v)}>
-              Replace UID
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {replaceOpen && allowUidPilot ? (
-        <div className="space-y-2 rounded-md border border-border p-3">
-          <Label htmlFor={`new-uid-${cardId}`}>New card UID</Label>
-          <Input
-            id={`new-uid-${cardId}`}
-            value={newUid}
-            onChange={(e) => setNewUid(e.target.value)}
-            placeholder="New blank card UID"
-          />
-          <Label htmlFor={`reason-${cardId}`}>Reason (optional)</Label>
-          <Input id={`reason-${cardId}`} value={reason} onChange={(e) => setReason(e.target.value)} />
-          <Button type="button" size="sm" disabled={pending || !newUid.trim()} onClick={runReplace}>
-            Issue replacement
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="sm" variant="outline" disabled={pending}>
+                Mark lost / stolen
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={() => runStatus('lost', 'Reported lost')}>
+                Lost
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => runStatus('stolen', 'Reported stolen')}>
+                Stolen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ) : null}
     </li>

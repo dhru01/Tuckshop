@@ -3,6 +3,7 @@ import { PosNav } from '@/components/pos/pos-nav';
 import { Brand } from '@/components/shared/brand';
 import { ConnectionStatus } from '@/components/shared/connection-status';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { serverEnv } from '@/lib/env/server';
 
 /**
  * Minimal, full-height POS shell: large touch targets, a persistent connection indicator and
@@ -15,6 +16,8 @@ export function PosShell({
   previewMode: boolean;
   children: React.ReactNode;
 }) {
+  const inactivityLockEnabled = serverEnv().POS_INACTIVITY_LOCK_ENABLED && !previewMode;
+
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b border-border/70 bg-card/85 px-3 shadow-soft backdrop-blur-xl sm:px-5">
@@ -28,7 +31,7 @@ export function PosShell({
           <ConnectionStatus />
         </div>
       </header>
-      <PosInactivityLock enabled={!previewMode} />
+      <PosInactivityLock enabled={inactivityLockEnabled} />
       <main id="main" className="page-enter flex-1 p-3 sm:p-5">
         {children}
       </main>

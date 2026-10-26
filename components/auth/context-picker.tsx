@@ -5,7 +5,7 @@ import { useActionState, useEffect } from 'react';
 
 import { selectContextAction, type AuthActionState } from '@/app/actions/auth';
 import type { RoleContext } from '@/lib/auth/context-types';
-import { contextLabel, defaultDashboardPath } from '@/lib/auth/roles';
+import { contextLabel } from '@/lib/auth/roles';
 import { AuthCard } from '@/components/auth/auth-card';
 import { FormError } from '@/components/auth/form-message';
 import { Button } from '@/components/ui/button';
@@ -45,13 +45,10 @@ export function ContextPicker({
               <Button
                 type="submit"
                 variant="outline"
-                className="h-auto w-full justify-between py-3"
+                className="h-auto w-full justify-start py-3 text-left"
                 disabled={pending}
               >
-                <span>{contextLabel(ctx.role, ctx.schoolName)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {defaultDashboardPath(ctx.role)}
-                </span>
+                {contextLabel(ctx.role, ctx.schoolName)}
               </Button>
             </form>
           </li>

@@ -11,9 +11,8 @@ export type RosterImportLineResult =
       line: number;
       status: 'ok';
       learnerName: string;
-      admissionRef: string;
-      guardianEmail: string;
-      inviteUrl: string;
+      grade: string;
+      inviteUrl?: string;
     }
   | { line: number; status: 'error'; message: string };
 
@@ -43,18 +42,31 @@ export async function importRosterRows(
       continue;
     }
 
-    const { data: inv, error: invErr } = await createParentInvitation(
-      actorId,
-      schoolId,
-      learner.learner_id,
-      row.guardianEmail,
-    );
+    const learnerName = `${row.firstName} ${row.lastName}`;
 
-    if (invErr || !inv) {
+    if (row.guardianEmail) {
+      const { data: inv, error: invErr } = await createParentInvitation(
+        actorId,
+        schoolId,
+        learner.learner_id,
+        row.guardianEmail,
+      );
+
+      if (invErr || !inv) {
+        results.push({
+          line,
+          status: 'error',
+          message: 'Learner created but parent invitation failed.',
+        });
+        continue;
+      }
+
       results.push({
         line,
-        status: 'error',
-        message: 'Learner created but parent invitation failed.',
+        status: 'ok',
+        learnerName,
+        grade: row.grade,
+        inviteUrl: `${appBaseUrl}/invite/${inv.token}`,
       });
       continue;
     }
@@ -62,10 +74,8 @@ export async function importRosterRows(
     results.push({
       line,
       status: 'ok',
-      learnerName: `${row.firstName} ${row.lastName}`,
-      admissionRef: learner.admission_ref,
-      guardianEmail: row.guardianEmail,
-      inviteUrl: `${appBaseUrl}/invite/${inv.token}`,
+      learnerName,
+      grade: row.grade,
     });
   }
 

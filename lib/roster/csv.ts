@@ -63,7 +63,7 @@ export function parseCsvRows(text: string): string[][] {
   return rows;
 }
 
-const HEADER_ALIASES: Record<string, keyof NormalisedRosterRow> = {
+const HEADER_ALIASES: Record<string, keyof NormalisedRosterRow | 'fullName'> = {
   student_first_name: 'firstName',
   first_name: 'firstName',
   learner_first_name: 'firstName',
@@ -88,6 +88,10 @@ const HEADER_ALIASES: Record<string, keyof NormalisedRosterRow> = {
   guardian_last_name: 'guardianLastName',
   parent_last_name: 'guardianLastName',
   caregiver_last_name: 'guardianLastName',
+  student_name: 'fullName',
+  learner_name: 'fullName',
+  name: 'fullName',
+  full_name: 'fullName',
 };
 
 export type NormalisedRosterRow = {
@@ -96,10 +100,19 @@ export type NormalisedRosterRow = {
   grade: string;
   className?: string;
   admissionRef?: string;
-  guardianEmail: string;
+  guardianEmail?: string;
   guardianFirstName?: string;
   guardianLastName?: string;
 };
+
+function splitFullName(full: string): { firstName: string; lastName: string } {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0] ?? '', lastName: parts[0] ?? '' };
+  const lastName = parts[parts.length - 1] ?? '';
+  const firstName = parts.slice(0, -1).join(' ');
+  return { firstName, lastName };
+}
 
 export type ParsedRosterLine =
   | { line: number; ok: true; row: NormalisedRosterRow }
@@ -113,6 +126,12 @@ function normaliseHeader(cell: string): string {
 
 export function parseRosterCsv(text: string): ParsedRosterLine[] {
   const matrix = parseCsvRows(text.replace(/^\uFEFF/, ''));
+  return parseRosterMatrix(matrix);
+}
+
+type RosterColumnKey = keyof NormalisedRosterRow | 'fullName';
+
+export function parseRosterMatrix(matrix: string[][]): ParsedRosterLine[] {
   if (matrix.length === 0) {
     return [{ line: 1, ok: false, error: 'File is empty.' }];
   }
@@ -122,25 +141,29 @@ export function parseRosterCsv(text: string): ParsedRosterLine[] {
     return [{ line: 1, ok: false, error: 'File is empty.' }];
   }
   const headerRow = headerCells.map(normaliseHeader);
-  const columnIndex: Partial<Record<keyof NormalisedRosterRow, number>> = {};
+  const columnIndex: Partial<Record<RosterColumnKey, number>> = {};
 
   for (let i = 0; i < headerRow.length; i++) {
     const header = headerRow[i];
     if (!header) continue;
-    const key = HEADER_ALIASES[header];
+    const key = HEADER_ALIASES[header] as RosterColumnKey | undefined;
     if (key) columnIndex[key] = i;
   }
 
-  const required: (keyof NormalisedRosterRow)[] = ['firstName', 'lastName', 'grade', 'guardianEmail'];
-  const missing = required.filter((k) => columnIndex[k] === undefined);
-  if (missing.length > 0) {
+  const hasNamePair = columnIndex.firstName !== undefined && columnIndex.lastName !== undefined;
+  const hasFullName = columnIndex.fullName !== undefined;
+  if (!hasNamePair && !hasFullName) {
     return [
       {
         line: 1,
         ok: false,
-        error: `Missing columns: ${missing.join(', ')}. Use the template (first_name, last_name, grade, guardian_email).`,
+        error:
+          'Missing name columns. Use first_name and last_name, or a single name column (e.g. name, student_name).',
       },
     ];
+  }
+  if (columnIndex.grade === undefined) {
+    return [{ line: 1, ok: false, error: 'Missing grade column.' }];
   }
 
   const dataLines = matrix.slice(1);
@@ -158,23 +181,29 @@ export function parseRosterCsv(text: string): ParsedRosterLine[] {
   for (let r = 0; r < dataLines.length; r++) {
     const line = r + 2;
     const cells = dataLines[r] ?? [];
-    const pick = (key: keyof NormalisedRosterRow): string => {
+    const pick = (key: RosterColumnKey): string => {
       const idx = columnIndex[key];
       if (idx === undefined) return '';
       return sanitiseCsvCell(cells[idx] ?? '');
     };
 
-    const firstName = pick('firstName');
-    const lastName = pick('lastName');
+    let firstName = pick('firstName');
+    let lastName = pick('lastName');
+    const fullName = pick('fullName');
+    if ((!firstName || !lastName) && fullName) {
+      const split = splitFullName(fullName);
+      firstName = split.firstName;
+      lastName = split.lastName;
+    }
     const grade = pick('grade');
     const guardianEmail = pick('guardianEmail').toLowerCase();
 
-    if (!firstName || !lastName || !grade || !guardianEmail) {
-      out.push({ line, ok: false, error: 'first_name, last_name, grade and guardian_email are required.' });
+    if (!firstName || !lastName || !grade) {
+      out.push({ line, ok: false, error: 'Each row needs a name and grade.' });
       continue;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) {
-      out.push({ line, ok: false, error: 'Invalid guardian_email.' });
+    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) {
+      out.push({ line, ok: false, error: 'Invalid parent/caregiver email.' });
       continue;
     }
 
@@ -190,7 +219,7 @@ export function parseRosterCsv(text: string): ParsedRosterLine[] {
         firstName,
         lastName,
         grade,
-        guardianEmail,
+        ...(guardianEmail ? { guardianEmail } : {}),
         ...(className ? { className } : {}),
         ...(admissionRef ? { admissionRef } : {}),
         ...(guardianFirstName ? { guardianFirstName } : {}),

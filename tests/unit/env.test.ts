@@ -37,6 +37,7 @@ describe('server env', () => {
     expect(env.APP_ENV).toBe('development');
     expect(env.UI_SHELL_PREVIEW).toBe(false);
     expect(env.SIMULATED_NFC_ENABLED).toBe(false);
+    expect(env.POS_INACTIVITY_LOCK_ENABLED).toBe(false);
     expect(env.PAYFAST_MODE).toBe('sandbox');
   });
 

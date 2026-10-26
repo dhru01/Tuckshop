@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
 
 import { PosSellView } from '@/components/pos/pos-sell-view';
+import { CATALOG_CATEGORY_SELECT, POS_PRODUCT_SELECT } from '@/lib/school/catalog';
 import { PageHeader } from '@/components/shared/page-header';
 import { requireActorForInterface } from '@/lib/auth/require-actor';
 import { serverEnv } from '@/lib/env/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Sell' };
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   const access = await requireActorForInterface('pos');
@@ -20,7 +23,7 @@ export default async function Page() {
   const { data: categories } = schoolId
     ? await supabase
         .from('product_categories')
-        .select('id, name, colour')
+        .select(CATALOG_CATEGORY_SELECT)
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .order('sort_order')
@@ -29,7 +32,7 @@ export default async function Page() {
   const { data: products } = schoolId
     ? await supabase
         .from('products')
-        .select('id, name, price_cents, barcode, category_id')
+        .select(POS_PRODUCT_SELECT)
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .is('archived_at', null)

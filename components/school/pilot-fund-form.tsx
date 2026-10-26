@@ -20,26 +20,28 @@ export function PilotFundForm({
   const [state, action, pending] = useActionState(pilotFundWalletAction, initial);
 
   return (
-    <form action={action} className="mt-2 flex flex-wrap items-end gap-2 border-t border-border pt-2">
+    <form action={action} className="space-y-3 pt-3">
       <input type="hidden" name="walletId" value={walletId} />
       <FormError message={state.error} />
       <FormSuccess message={state.success} />
-      <div className="space-y-1">
-        <Label htmlFor={`amt-${walletId}`} className="text-xs">Pilot credit (R)</Label>
-        <Input id={`amt-${walletId}`} name="amount" placeholder="50" className="h-8 w-24" />
+      <p className="text-xs font-medium text-muted-foreground">Update wallet balance</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor={`amt-${walletId}`}>Amount (R)</Label>
+          <Input id={`amt-${walletId}`} name="amount" placeholder="50" className="w-28" inputMode="decimal" />
+        </div>
+        <div className="min-w-[12rem] flex-1 space-y-1">
+          <Label htmlFor={`reason-${walletId}`}>Note</Label>
+          <Input
+            id={`reason-${walletId}`}
+            name="reason"
+            placeholder={`e.g. Pilot top-up for ${learnerName}`}
+          />
+        </div>
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Saving…' : 'Add funds'}
+        </Button>
       </div>
-      <div className="min-w-[8rem] flex-1 space-y-1">
-        <Label htmlFor={`reason-${walletId}`} className="text-xs">Reason</Label>
-        <Input
-          id={`reason-${walletId}`}
-          name="reason"
-          placeholder={`Pilot for ${learnerName}`}
-          className="h-8"
-        />
-      </div>
-      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
-        {pending ? '…' : 'Add funds'}
-      </Button>
     </form>
   );
 }

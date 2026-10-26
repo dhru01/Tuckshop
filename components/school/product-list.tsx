@@ -1,6 +1,8 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useDeferredValue, useMemo, useState } from 'react';
 
 import {
   archiveProductAction,
@@ -8,10 +10,10 @@ import {
   type ProductActionState,
 } from '@/app/actions/products';
 import { FormError, FormSuccess } from '@/components/auth/form-message';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatRand } from '@/lib/wallets/money';
 
 type ProductRow = {
@@ -19,25 +21,13 @@ type ProductRow = {
   name: string;
   barcode: string | null;
   priceCents: number;
-  costPriceCents: number | null;
-  trackStock: boolean;
-  stockQuantity: number;
-  lowStockThreshold: number | null;
   isActive: boolean;
   categoryId: string;
   imageUrl: string | null;
 };
 
+const ALL_TAB = 'all';
 const initial: ProductActionState = {};
-
-function lowStock(p: ProductRow): boolean {
-  return (
-    p.trackStock &&
-    p.lowStockThreshold !== null &&
-    p.lowStockThreshold !== undefined &&
-    p.stockQuantity <= p.lowStockThreshold
-  );
-}
 
 function EditProductForm({
   product,
@@ -48,11 +38,6 @@ function EditProductForm({
 }) {
   const [state, action, pending] = useActionState(updateProductAction, initial);
   const price = (product.priceCents / 100).toFixed(2);
-  const cost =
-    product.costPriceCents !== null && product.costPriceCents !== undefined
-      ? (product.costPriceCents / 100).toFixed(2)
-      : '';
-
   return (
     <form action={action} className="mt-3 space-y-3 border-t border-border pt-3">
       <input type="hidden" name="productId" value={product.id} />
@@ -83,27 +68,10 @@ function EditProductForm({
           <Label>Barcode</Label>
           <Input name="barcode" defaultValue={product.barcode ?? ''} />
         </div>
-        <div className="space-y-1">
-          <Label>Cost (R)</Label>
-          <Input name="cost" defaultValue={cost} />
-        </div>
-        <div className="space-y-1">
-          <Label>Low-stock alert</Label>
-          <Input
-            name="lowStockThreshold"
-            type="number"
-            min={0}
-            defaultValue={product.lowStockThreshold ?? ''}
-          />
-        </div>
         <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
           <label className="flex items-center gap-2 text-sm">
-            <input name="trackStock" type="checkbox" defaultChecked={product.trackStock} />
-            Track stock
-          </label>
-          <label className="flex items-center gap-2 text-sm">
             <input name="isActive" type="checkbox" defaultChecked={product.isActive} />
-            Active in POS
+            Show on POS
           </label>
         </div>
         <div className="space-y-1 sm:col-span-2">
@@ -116,26 +84,25 @@ function EditProductForm({
   );
 }
 
-export function ProductList({
+function ProductListItems({
   products,
   categories,
+  openId,
+  setOpenId,
+  deleting,
+  removeProduct,
 }: {
   products: ProductRow[];
   categories: readonly { id: string; name: string }[];
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+  deleting: string | null;
+  removeProduct: (id: string, name: string) => void;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [archiving, setArchiving] = useState<string | null>(null);
-
-  const archive = async (id: string) => {
-    setArchiving(id);
-    await archiveProductAction(id);
-    setArchiving(null);
-  };
-
   if (products.length === 0) {
     return (
       <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
-        No products yet. Add one manually or import a CSV.
+        No products match your filters.
       </p>
     );
   }
@@ -151,16 +118,14 @@ export function ProductList({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{p.name}</span>
                   {!p.isActive ? (
-                    <StatusBadge tone="neutral">Inactive</StatusBadge>
-                  ) : null}
-                  {lowStock(p) ? (
-                    <StatusBadge tone="warning">Low stock</StatusBadge>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      Hidden from POS
+                    </span>
                   ) : null}
                 </div>
                 <p className="text-muted-foreground">
                   {formatRand(p.priceCents)}
                   {p.barcode ? ` · ${p.barcode}` : ''}
-                  {p.trackStock ? ` · Stock ${p.stockQuantity}` : ' · No stock tracking'}
                 </p>
               </div>
               {p.imageUrl ? (
@@ -184,11 +149,12 @@ export function ProductList({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                disabled={archiving === p.id}
-                onClick={() => archive(p.id)}
+                variant="outline"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={deleting === p.id}
+                onClick={() => removeProduct(p.id, p.name)}
               >
-                {archiving === p.id ? '…' : 'Archive'}
+                {deleting === p.id ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
             {open ? <EditProductForm product={p} categories={categories} /> : null}
@@ -196,5 +162,171 @@ export function ProductList({
         );
       })}
     </ul>
+  );
+}
+
+function matchesSearch(product: ProductRow, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (product.name.toLowerCase().includes(q)) return true;
+  if (product.barcode?.toLowerCase().includes(q)) return true;
+  return false;
+}
+
+export function ProductList({
+  products,
+  categories,
+  posProductCount,
+}: {
+  products: ProductRow[];
+  categories: readonly { id: string; name: string }[];
+  posProductCount: number;
+}) {
+  const router = useRouter();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [listFeedback, setListFeedback] = useState<ProductActionState>({});
+  const [activeTab, setActiveTab] = useState(ALL_TAB);
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearch = useDeferredValue(searchQuery);
+
+  const removeProduct = async (id: string, name: string) => {
+    if (
+      !window.confirm(
+        `Delete "${name}"? It will be removed from the tuck shop catalogue and POS.`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(id);
+    setListFeedback({});
+    const result = await archiveProductAction(id);
+    setDeleting(null);
+    if (result.error) {
+      setListFeedback({ error: result.error });
+      return;
+    }
+    if (openId === id) setOpenId(null);
+    setListFeedback({ success: result.success });
+    router.refresh();
+  };
+
+  const filteredBySearch = useMemo(
+    () => products.filter((p) => matchesSearch(p, deferredSearch)),
+    [products, deferredSearch],
+  );
+
+  const suggestions = useMemo(() => {
+    if (searchQuery.trim().length < 1) return [];
+    return products.filter((p) => matchesSearch(p, searchQuery)).slice(0, 8);
+  }, [products, searchQuery]);
+
+  const countForCategory = (categoryId: string) =>
+    filteredBySearch.filter((p) => p.categoryId === categoryId).length;
+
+  const allCount = filteredBySearch.length;
+
+  if (products.length === 0) {
+    return (
+      <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
+        No products yet. Add one manually or import an Excel file.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">Catalogue</h2>
+        <p className="text-xs text-muted-foreground">
+          {posProductCount} product{posProductCount === 1 ? '' : 's'} on the school POS. Items with
+          &ldquo;Show on POS&rdquo; enabled use the same names, prices, and categories as the till.
+        </p>
+      </div>
+      <FormError message={listFeedback.error} />
+      <FormSuccess message={listFeedback.success} />
+
+      <div className="relative max-w-md space-y-1">
+        <Input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name or barcode…"
+          className={searchQuery ? 'pr-9' : undefined}
+          aria-label="Search products"
+          aria-autocomplete="list"
+          autoComplete="off"
+        />
+        {searchQuery ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 size-8 -translate-y-1/2"
+            onClick={() => setSearchQuery('')}
+            aria-label="Clear search"
+          >
+            <X className="size-4" />
+          </Button>
+        ) : null}
+        {suggestions.length > 0 && searchQuery.trim() ? (
+          <ul
+            className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover py-1 text-sm shadow-md"
+            role="listbox"
+          >
+            {suggestions.map((p) => (
+              <li key={p.id} role="option" aria-selected="false">
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left hover:bg-muted"
+                  onClick={() => setSearchQuery(p.name)}
+                >
+                  {p.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value={ALL_TAB} className="text-xs sm:text-sm">
+            All ({allCount})
+          </TabsTrigger>
+          {categories.map((c) => (
+            <TabsTrigger key={c.id} value={c.id} className="text-xs sm:text-sm">
+              {c.name} ({countForCategory(c.id)})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={ALL_TAB} className="mt-0">
+          <ProductListItems
+            products={filteredBySearch}
+            categories={categories}
+            openId={openId}
+            setOpenId={setOpenId}
+            deleting={deleting}
+            removeProduct={removeProduct}
+          />
+        </TabsContent>
+        {categories.map((c) => {
+          const tabProducts = filteredBySearch.filter((p) => p.categoryId === c.id);
+          return (
+            <TabsContent key={c.id} value={c.id} className="mt-0">
+              <ProductListItems
+                products={tabProducts}
+                categories={categories}
+                openId={openId}
+                setOpenId={setOpenId}
+                deleting={deleting}
+                removeProduct={removeProduct}
+              />
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </div>
   );
 }

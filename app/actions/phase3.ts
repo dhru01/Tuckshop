@@ -55,41 +55,41 @@ export async function createLearnerAction(
   if (!schoolId) return { error: 'No school in your current context.' };
 
   const guardianEmail = String(formData.get('guardianEmail') ?? '').trim().toLowerCase();
+  if (!guardianEmail) {
+    return { error: 'Parent / caregiver email is required.' };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) {
+    return { error: 'Enter a valid parent / caregiver email.' };
+  }
 
   const { data, error } = await createLearnerWithWallet(actorId(access), schoolId, {
     firstName: String(formData.get('firstName') ?? ''),
     lastName: String(formData.get('lastName') ?? ''),
     grade: String(formData.get('grade') ?? ''),
     className: String(formData.get('className') ?? ''),
-    admissionRef: String(formData.get('admissionRef') ?? '').trim() || undefined,
   });
   if (error || !data) return { error: 'Could not add learner. Is the school active?' };
 
-  if (guardianEmail) {
-    const { data: inv, error: invErr } = await createParentInvitation(
-      actorId(access),
-      schoolId,
-      data.learner_id,
-      guardianEmail,
-    );
-    if (invErr || !inv) {
-      revalidatePath('/school/learners');
-      return {
-        error: 'Learner added but could not create parent invite. Add invite from Parents.',
-        success: `Learner ${data.admission_ref} created.`,
-      };
-    }
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const { data: inv, error: invErr } = await createParentInvitation(
+    actorId(access),
+    schoolId,
+    data.learner_id,
+    guardianEmail,
+  );
+  if (invErr || !inv) {
     revalidatePath('/school/learners');
-    revalidatePath('/school/parents');
     return {
-      success: `Learner added (${data.admission_ref}). Share the invite link with the caregiver.`,
-      inviteUrl: `${base}/invite/${inv.token}`,
+      error: 'Learner added but could not create parent invite. Add invite from Parents.',
+      success: `Learner ${data.admission_ref} created.`,
     };
   }
-
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   revalidatePath('/school/learners');
-  return { success: `Learner added (${data.admission_ref}).` };
+  revalidatePath('/school/parents');
+  return {
+    success: `Learner added (${data.admission_ref}). Share the invite link with the caregiver.`,
+    inviteUrl: `${base}/invite/${inv.token}`,
+  };
 }
 
 export async function inviteParentAction(

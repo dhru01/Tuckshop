@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 
 import { actorId, requireActorForInterface } from '@/lib/auth/require-actor';
-import { parseRosterCsv, type NormalisedRosterRow } from '@/lib/roster/csv';
+import type { NormalisedRosterRow } from '@/lib/roster/csv';
+import { isRosterUploadFile, parseRosterUpload } from '@/lib/roster/parse-upload';
 import { importRosterRows, type RosterImportLineResult } from '@/services/roster-import-service';
 
 export type RosterImportState = {
@@ -22,22 +23,20 @@ export async function importRosterAction(
 
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
-    return { error: 'Choose a CSV file to import.' };
+    return { error: 'Choose a file to import.' };
   }
 
-  const name = file.name.toLowerCase();
-  if (!name.endsWith('.csv') && !name.endsWith('.txt')) {
+  if (!isRosterUploadFile(file.name)) {
     return {
-      error: 'Upload a .csv file. In Excel: File → Save As → CSV (UTF-8).',
+      error: 'Upload an Excel (.xlsx) or CSV file with learner names and grade.',
     };
   }
 
-  if (file.size > 2 * 1024 * 1024) {
-    return { error: 'File is too large (max 2 MB).' };
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: 'File is too large (max 5 MB).' };
   }
 
-  const text = await file.text();
-  const parsed = parseRosterCsv(text);
+  const parsed = await parseRosterUpload(file);
 
   const only = parsed[0];
   if (parsed.length === 1 && only && !only.ok) {

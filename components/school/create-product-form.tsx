@@ -44,25 +44,9 @@ export function CreateProductForm({
           <Label htmlFor="product-price">Price (R)</Label>
           <Input id="product-price" name="price" placeholder="5.00" required />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 sm:col-span-2">
           <Label htmlFor="product-barcode">Barcode (optional)</Label>
           <Input id="product-barcode" name="barcode" />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="product-cost">Cost (R, optional)</Label>
-          <Input id="product-cost" name="cost" placeholder="3.50" />
-        </div>
-        <div className="flex items-center gap-2 sm:col-span-2">
-          <input id="product-track" name="trackStock" type="checkbox" className="size-4" />
-          <Label htmlFor="product-track">Track stock</Label>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="product-initial">Initial stock</Label>
-          <Input id="product-initial" name="initialStock" type="number" min={0} defaultValue={0} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="product-low">Low-stock alert</Label>
-          <Input id="product-low" name="lowStockThreshold" type="number" min={0} />
         </div>
         <div className="space-y-1 sm:col-span-2">
           <Label htmlFor="product-desc">Description (optional)</Label>

@@ -1,7 +1,6 @@
 import {
   BarChart3,
   Bell,
-  Boxes,
   Building2,
   ClipboardList,
   CreditCard,
@@ -18,7 +17,6 @@ import {
   ShoppingBasket,
   SlidersHorizontal,
   Timer,
-  UserCog,
   Users,
   Wallet,
   type LucideIcon,
@@ -194,32 +192,11 @@ export const INTERFACES: Record<InterfaceKey, InterfaceConfig> = {
         phase: 6,
       },
       {
-        href: '/school/inventory',
-        label: 'Inventory',
-        description: 'Stock and movements',
-        icon: Boxes,
-        phase: 6,
-      },
-      {
         href: '/school/transactions',
         label: 'Transactions',
         description: 'All sales and refunds',
         icon: Receipt,
         phase: 10,
-      },
-      {
-        href: '/school/reports',
-        label: 'Reports',
-        description: 'Reports and CSV export',
-        icon: BarChart3,
-        phase: 10,
-      },
-      {
-        href: '/school/staff',
-        label: 'Staff',
-        description: 'Cashiers and administrators',
-        icon: UserCog,
-        phase: 3,
       },
       {
         href: '/school/settings',

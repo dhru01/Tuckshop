@@ -6,6 +6,7 @@ export function PageHeader({
   actions,
   eyebrow,
   className,
+  descriptionClassName,
 }: {
   title: string;
   description?: string;
@@ -13,6 +14,7 @@ export function PageHeader({
   /** Small label above the title (e.g. the section or school name). */
   eyebrow?: string;
   className?: string;
+  descriptionClassName?: string;
 }) {
   return (
     <div
@@ -28,7 +30,12 @@ export function PageHeader({
           {title}
         </h1>
         {description && (
-          <p className="max-w-prose text-sm text-pretty text-muted-foreground md:text-base">
+          <p
+            className={cn(
+              'max-w-prose text-sm text-pretty text-muted-foreground md:text-base',
+              descriptionClassName,
+            )}
+          >
             {description}
           </p>
         )}

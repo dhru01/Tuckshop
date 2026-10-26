@@ -36,10 +36,7 @@ const REQUIRED_ROUTES = [
   '/school/parents',
   '/school/cards',
   '/school/products',
-  '/school/inventory',
   '/school/transactions',
-  '/school/reports',
-  '/school/staff',
   '/school/settings',
   // super admin
   '/admin/dashboard',

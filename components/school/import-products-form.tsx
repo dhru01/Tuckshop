@@ -7,43 +7,38 @@ import { FormError, FormSuccess } from '@/components/auth/form-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { productCsvTemplate } from '@/lib/products/csv';
 
 const initial: ProductActionState = {};
 
 export function ImportProductsForm() {
   const [state, action, pending] = useActionState(importProductsAction, initial);
 
-  const downloadTemplate = () => {
-    const blob = new Blob([productCsvTemplate()], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'products-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <form action={action} className="space-y-4 rounded-md border border-border bg-background p-4">
-      <h2 className="text-sm font-medium">Import CSV</h2>
+      <h2 className="text-sm font-medium">Import products</h2>
       <p className="text-xs text-muted-foreground">
-        Categories must match your school catalogue (Food, Snacks, Drinks, Stationery, Other).
+        Upload an Excel file with at least{' '}
+        <span className="text-foreground">name</span> and{' '}
+        <span className="text-foreground">price</span> columns.{' '}
+        <span className="text-foreground">category</span> and barcode are optional (missing category
+        uses Other). Categories must match your catalogue when provided (Food, Snacks, Drinks,
+        Stationery, Other).
       </p>
       <FormError message={state.error} />
       <FormSuccess message={state.success} />
       <div className="space-y-1">
-        <Label htmlFor="product-csv">CSV file</Label>
-        <Input id="product-csv" name="file" type="file" accept=".csv,text/csv" required />
+        <Label htmlFor="product-file">Excel file</Label>
+        <Input
+          id="product-file"
+          name="file"
+          type="file"
+          accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+          required
+        />
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? 'Importing…' : 'Import'}
-        </Button>
-        <Button type="button" variant="outline" onClick={downloadTemplate}>
-          Download template
-        </Button>
-      </div>
+      <Button type="submit" variant="secondary" disabled={pending}>
+        {pending ? 'Importing…' : 'Import'}
+      </Button>
     </form>
   );
 }
