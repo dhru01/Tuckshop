@@ -1,0 +1,8 @@
+# Tuckshop – Supabase CLI config (hosted dev project).
+# Apply migrations with: npx supabase link --project-ref snxlgfnrxrvfcktbfpav && npx supabase db push
+# Or apply via Supabase MCP `apply_migration` during development.
+
+project_id = "snxlgfnrxrvfcktbfpav"
+
+[db]
+major_version = 17

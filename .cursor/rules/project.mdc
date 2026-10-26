@@ -1,0 +1,18 @@
+---
+description: Tuckshop project rules (security, money, Next.js 16). Always apply.
+alwaysApply: true
+---
+
+# Tuckshop – project rules
+
+Read `docs/CONVENTIONS.md`, `docs/ARCHITECTURE.md` and the relevant planning doc before changing behaviour.
+
+- This is **Next.js 16**: read `node_modules/next/dist/docs/` before using Next APIs. `middleware` is `proxy.ts`. Cache Components is OFF.
+- Money is **integer cents** only. Never use floats for money. Wallet/ledger changes happen only in audited, idempotent database functions – never from UI or ad-hoc queries.
+- Never trust the client for role, school, price, totals, balance or payment success. Re-authorise in every Server Action / Route Handler; RLS and DB functions are the final authority.
+- The service-role client (`lib/supabase/admin.ts`) is allowed only in `services/**`, `app/api/webhooks/**`, `app/api/cron/**`.
+- Never expose secrets (no `NEXT_PUBLIC_` for secrets), never log credentials/PII, never show raw errors to users.
+- Do not present unimplemented features as working. Use `PhasePlaceholder` for unbuilt screens. Do not fabricate payment, NFC or hardware behaviour.
+- Never claim legal (POPIA) compliance in UI copy or docs.
+- Every screen needs loading, empty, error and success states. Status uses icon + text, not colour alone.
+- Add tests with the change; run `npm run verify` before declaring a phase complete.
