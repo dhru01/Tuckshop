@@ -1,5 +1,6 @@
 'use client';
 
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 import {
@@ -129,6 +130,25 @@ export function PosSellView({
       }
       return [...prev, { productId, quantity: 1 }];
     });
+  }, []);
+
+  const changeLineQuantity = useCallback((productId: string, delta: number) => {
+    setBasket((prev) => {
+      const line = prev.find((l) => l.productId === productId);
+      if (!line) return prev;
+      const nextQty = line.quantity + delta;
+      if (nextQty <= 0) return prev.filter((l) => l.productId !== productId);
+      if (nextQty > 99) return prev;
+      return prev.map((l) =>
+        l.productId === productId ? { ...l, quantity: nextQty } : l,
+      );
+    });
+    setError(undefined);
+  }, []);
+
+  const removeLine = useCallback((productId: string) => {
+    setBasket((prev) => prev.filter((l) => l.productId !== productId));
+    setError(undefined);
   }, []);
 
   const onBarcodeEnter = (value: string) => {
@@ -436,14 +456,61 @@ export function PosSellView({
         {basket.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tap products to add them.</p>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3 text-sm">
             {basket.map((line) => {
               const p = products.find((x) => x.id === line.productId);
               if (!p) return null;
               return (
-                <li key={line.productId} className="flex justify-between gap-2">
-                  <span>{p.name} × {line.quantity}</span>
-                  <span className="tabular-nums">{formatRand(p.priceCents * line.quantity)}</span>
+                <li
+                  key={line.productId}
+                  className="space-y-2 rounded-xl border border-border bg-muted/30 p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium leading-snug">{p.name}</span>
+                    <span className="num shrink-0 font-semibold">
+                      {formatRand(p.priceCents * line.quantity)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-lg"
+                      className="min-h-12 min-w-12 shrink-0"
+                      aria-label={`Remove one ${p.name}`}
+                      onClick={() => changeLineQuantity(line.productId, -1)}
+                    >
+                      <Minus className="size-5" aria-hidden="true" />
+                    </Button>
+                    <span
+                      className="num min-w-10 text-center text-base font-semibold"
+                      aria-live="polite"
+                      aria-label={`Quantity: ${line.quantity}`}
+                    >
+                      {line.quantity}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-lg"
+                      className="min-h-12 min-w-12 shrink-0"
+                      aria-label={`Add one ${p.name}`}
+                      disabled={line.quantity >= 99}
+                      onClick={() => changeLineQuantity(line.productId, 1)}
+                    >
+                      <Plus className="size-5" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-lg"
+                      className="ml-auto min-h-12 min-w-12 shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove all ${p.name} from basket`}
+                      onClick={() => removeLine(line.productId)}
+                    >
+                      <Trash2 className="size-5" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </li>
               );
             })}

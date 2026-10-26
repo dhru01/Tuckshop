@@ -20,16 +20,20 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center',
+        'bg-dot-grid flex flex-col items-center gap-4 rounded-2xl border border-dashed border-input bg-card px-6 py-14 text-center',
         className,
       )}
     >
-      <span className="inline-flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon className="size-6" aria-hidden="true" />
+      <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-primary shadow-soft">
+        <Icon className="size-7" aria-hidden="true" />
       </span>
       <div className="space-y-1">
-        <p className="font-medium">{title}</p>
-        {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
+        <p className="font-heading text-base font-semibold">{title}</p>
+        {description && (
+          <p className="mx-auto max-w-sm text-sm text-pretty text-muted-foreground">
+            {description}
+          </p>
+        )}
       </div>
       {action}
     </div>
@@ -55,14 +59,16 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center gap-3 rounded-2xl border border-danger/30 bg-danger-soft px-6 py-10 text-center',
+        'flex flex-col items-center gap-4 rounded-2xl border border-danger/25 bg-danger-soft px-6 py-12 text-center',
         className,
       )}
     >
-      <AlertCircle className="size-8 text-danger" aria-hidden="true" />
+      <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-card text-danger shadow-soft">
+        <AlertCircle className="size-7" aria-hidden="true" />
+      </span>
       <div className="space-y-1">
-        <p className="font-medium">{title}</p>
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+        <p className="font-heading text-base font-semibold">{title}</p>
+        <p className="mx-auto max-w-sm text-sm text-pretty text-muted-foreground">{description}</p>
         {reference && <p className="text-xs text-muted-foreground">Reference: {reference}</p>}
       </div>
       {action}
@@ -73,16 +79,16 @@ export function ErrorState({
 /** Generic loading skeleton for page bodies. */
 export function LoadingState({ rows = 4, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn('space-y-4', className)} role="status" aria-live="polite" aria-busy="true">
+    <div className={cn('space-y-5', className)} role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading…</span>
-      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-9 w-56 rounded-xl" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
           <Skeleton key={i} className="h-28 rounded-2xl" />
         ))}
       </div>
       {Array.from({ length: rows }, (_, i) => (
-        <Skeleton key={i} className="h-12 rounded-xl" />
+        <Skeleton key={i} className="h-14 rounded-xl" />
       ))}
     </div>
   );

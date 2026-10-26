@@ -10,10 +10,10 @@ export function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+    <Card className="shadow-lift [--card-spacing:--spacing(7)] sm:[--card-spacing:--spacing(8)]">
+      <CardHeader className="space-y-1.5">
+        <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+        {description ? <CardDescription className="text-sm">{description}</CardDescription> : null}
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

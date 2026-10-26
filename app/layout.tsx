@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,6 +11,12 @@ const geistSans = Geist({
   subsets: ['latin'],
 });
 
+const display = Plus_Jakarta_Sans({
+  variable: '--font-display',
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+});
+
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
@@ -18,23 +24,22 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Tuckshop – cashless school tuck shop',
-    template: '%s · Tuckshop',
+    default: 'FirstByte Tuckshop – cashless school tuck shop',
+    template: '%s · FirstByte Tuckshop',
   },
   description: 'Cashless tuck shop payments for South African primary schools.',
-  // The product name and branding are placeholders pending decision D-16.
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#047857',
+  themeColor: '#0f8a6b',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-ZA" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en-ZA" className={`${geistSans.variable} ${display.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
